@@ -1,42 +1,10 @@
-use std::path::{Path, PathBuf};
-use std::{fs::File, io::BufReader};
-use std::io::prelude::*;
+use utils::{file_io::FileReader, collections::create_initialized_vector_with_fixed_capacity};
 
-fn get_file_path(file: &str) -> String {
-    let current_dir: PathBuf = std::env::current_dir().expect("Unable to get current directory");
-    let full_path: PathBuf = current_dir.join(file);
-    let full_path: &Path = full_path.as_path();
-    full_path.to_str().expect("Unable to convert file path to string").to_string()
+fn is_elf_seperator(input_string: &str) -> bool {
+    input_string.is_empty()
 }
 
-fn read_in_puzzle_input(file: &str) -> Vec<String> {
-    let mut lines: Vec<String> = Vec::<String>::new();
-
-    let path = get_file_path(file);
-    let file: File = File::open(path).expect("Unable to open file");
-    let buffer_reader: BufReader<File> = BufReader::new(file);
-
-    for line in buffer_reader.lines() {
-        let line: String = line.expect("Unable to read line in file");
-        lines.push(line);
-    }
-
-    lines
-}
-
-fn is_list_seperator(input_string: &str) -> bool {
-    input_string == ""
-}
-
-fn create_initialized_vector_with_fixed_capacity<T: Default>(capacity: usize) -> Vec<T> {
-    let mut vector = Vec::with_capacity(capacity);
-    for _ in 0..capacity {
-        vector.push(T::default());
-    }
-
-    vector
-}
-
+#[allow(dead_code)] // only used in the first part of the challenge
 fn check_and_set_higher_amount(calories_buffer: &usize, highest_calories_amount: &mut usize) {
     if calories_buffer > highest_calories_amount {
         *highest_calories_amount = *calories_buffer;
@@ -56,71 +24,73 @@ fn check_and_align_higher_amounts(calories_buffer: &usize, highest_calories_amou
     }
 }
 
-fn determine_highest_single_carried_calories_amount(calories_table: &Vec<String>) -> usize {
+fn calculate_sum_of_top_carried_calories(top_carried_calories: &[usize]) -> usize {
+    top_carried_calories.iter().sum()
+}
+
+#[allow(dead_code)] // only used in the first part of the challenge
+fn determine_single_top_carried_calories(file_reader: FileReader) -> usize {
     
     let mut calories_buffer: usize = 0;
     let mut highest_calories_amount: usize = 0;
 
-    for amount in calories_table {
+    for line in file_reader {
 
-        if is_list_seperator(amount) {
+        if is_elf_seperator(&line) {
             check_and_set_higher_amount(&calories_buffer, &mut highest_calories_amount);
             calories_buffer = 0;
             continue;
         }
 
-        let converted_amount: usize = amount.parse::<usize>().expect("Unable to parse calories amount from file input");
+        let converted_amount: usize = line.parse::<usize>().expect("Unable to parse calories amount from file input");
         calories_buffer += converted_amount;
     }
 
     highest_calories_amount
 }
 
-fn determine_highest_amounts_of_carried_calories<const TOP_ELFS_BOUNDARY: usize>(calories_table: &Vec<String>) -> usize {
+fn determine_top_carried_calories<const TOP_CARRIES_BOUNDARY: usize>(file_reader: FileReader) -> usize {
     
     let mut calories_buffer: usize = 0;
-    let mut highest_calories_amounts: Vec<usize> = create_initialized_vector_with_fixed_capacity(TOP_ELFS_BOUNDARY);
+    let mut top_carried_calories: Vec<usize> = create_initialized_vector_with_fixed_capacity(TOP_CARRIES_BOUNDARY);
 
-    for row in calories_table {
+    for line in file_reader {
 
-        if !is_list_seperator(row) {
-            let converted_amount: usize = row.parse::<usize>().expect("Unable to parse calories amount from file input");
+        if !is_elf_seperator(&line) {
+            let converted_amount: usize = line.parse::<usize>().expect("Unable to parse calories amount from file input");
             calories_buffer += converted_amount;
             continue;
         }
         
-        check_and_align_higher_amounts(&calories_buffer, &mut highest_calories_amounts);
+        check_and_align_higher_amounts(&calories_buffer, &mut top_carried_calories);
         calories_buffer = 0;
     }
 
-    check_and_align_higher_amounts(&calories_buffer, &mut highest_calories_amounts);
+    check_and_align_higher_amounts(&calories_buffer, &mut top_carried_calories);
 
-    highest_calories_amounts.iter().sum()
+    calculate_sum_of_top_carried_calories(&top_carried_calories)
 }
 
 fn main() {
-    const PUZZLE_INPUT: &str = "day_01/data/puzzle_input.txt";
-    const TOP_ELFS_BOUNDARY: usize = 3;
-    let calories_table: Vec<String> = read_in_puzzle_input(PUZZLE_INPUT);
-
-    let carried_amount: usize = determine_highest_amounts_of_carried_calories::<TOP_ELFS_BOUNDARY>(&calories_table);
-
-    println!("{}", carried_amount);
+    const TOP_CARRIES_BOUNDARY: usize = 3;
+    let file_reader: FileReader = FileReader::new("day_01/data/puzzle_input.txt");
+    let top_carried_calories: usize = determine_top_carried_calories::<TOP_CARRIES_BOUNDARY>(file_reader);
+    println!("{}", top_carried_calories);
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{read_in_puzzle_input, determine_highest_single_carried_calories_amount, determine_highest_amounts_of_carried_calories};
+    use utils::file_io::FileReader;
+    use crate::{determine_top_carried_calories, determine_single_top_carried_calories};
 
     #[test]
     fn should_determine_elf_with_highest_calories() {
 
-        // Assert
-        const PUZZLE_INPUT: &str = "day_01/data/test_01.txt";
-        let calories_table: Vec<String> = read_in_puzzle_input(PUZZLE_INPUT);
-
         // Arrange
-        let highest_single_carried_amount: usize = determine_highest_single_carried_calories_amount(&calories_table);
+        let file_reader: FileReader = FileReader::new("day_01/data/test_01.txt");
+
+        // Act
+        let highest_single_carried_amount: usize = determine_single_top_carried_calories(file_reader);
 
         // Assert
         assert_eq!(24000, highest_single_carried_amount);
@@ -129,13 +99,12 @@ mod tests {
     #[test]
     fn should_determine_top_three_elfs_with_highest_calories() {
 
-        // Assert
-        const PUZZLE_INPUT: &str = "day_01/data/test_01.txt";
-        const TOP_ELFS_BOUNDARY: usize = 3;
-        let calories_table: Vec<String> = read_in_puzzle_input(PUZZLE_INPUT);
-
         // Arrange
-        let amount_calories: usize = determine_highest_amounts_of_carried_calories::<TOP_ELFS_BOUNDARY>(&calories_table);
+        const TOP_ELFS_BOUNDARY: usize = 3;
+        let file_reader: FileReader = FileReader::new("day_01/data/test_01.txt");
+
+        // Act
+        let amount_calories: usize = determine_top_carried_calories::<TOP_ELFS_BOUNDARY>(file_reader);
 
         // Assert
         assert_eq!(45000, amount_calories);
