@@ -87,7 +87,7 @@ mod tests {
     fn should_determine_elf_with_highest_calories() {
 
         // Arrange
-        let file_reader: FileReader = FileReader::new("day_01/data/test_01.txt");
+        let file_reader: FileReader = FileReader::new("day_01/data/test.txt");
 
         // Act
         let highest_single_carried_amount: usize = determine_single_top_carried_calories(file_reader);
@@ -101,7 +101,7 @@ mod tests {
 
         // Arrange
         const TOP_ELFS_BOUNDARY: usize = 3;
-        let file_reader: FileReader = FileReader::new("day_01/data/test_01.txt");
+        let file_reader: FileReader = FileReader::new("day_01/data/test.txt");
 
         // Act
         let amount_calories: usize = determine_top_carried_calories::<TOP_ELFS_BOUNDARY>(file_reader);
