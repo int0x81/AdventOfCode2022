@@ -6,3 +6,15 @@ pub fn create_initialized_vector_with_fixed_capacity<T: Default>(capacity: usize
 
     vector
 }
+
+pub fn initialize_string_array<const SIZE: usize>() -> [String; SIZE] {
+
+    unsafe {
+        let mut arr: [String; SIZE] = std::mem::uninitialized();
+        // let mut arr = std::mem::MaybeUninit::<String>::uninit_array::<GROUP_SIZE>();
+        for item in &mut arr[..] {
+            std::ptr::write(item, String::new());
+        }
+        arr
+    }
+}
